@@ -1,3 +1,10 @@
 # sinaweibo
-sinaweiboscrap
-环境需要：lxml, pymongo, selenium-2.42.1, pyvirtualdisplay
+环境要求
+lxml
+pymongo
+pyvirtualdisplay
+selenium-3.4.1
+firefox 52.1.0
+Xvfb
+
+
