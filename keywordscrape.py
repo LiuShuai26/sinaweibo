@@ -44,8 +44,7 @@ def get_userinfo(userid, headers):
     userregion = re.findall('地区:(.*?)<br/>', html)
     userbri = re.findall('生日:(.*?)<br/>', html)
 
-    if not username:
-        print "用户url构建错误，重新构建："
+    if not username:            #用户url特殊，特别处理
         userurl = 'http://weibo.cn/' + userid
         userurl = get_userurl(userurl=userurl, headers=headers)
         print userurl
@@ -85,7 +84,7 @@ def get_text(html, headers):
             str = bb[i].split(' ​ ')[1][0]
         except:
             str = 'no'
-        if (str == '全'):
+        if (str == '全'):        #如果内容太多，部分被隐藏。则进入全文链接，获取微博完整内容
             fulltext = get_fulltext(url=fulltexturl[fulltextnum], function='fulltext', headers=headers)
             fulltextnum += 1
             datas.append(fulltext)
@@ -103,16 +102,16 @@ def get_time(html, starttime):
     for it in bbtime:
         btimes.append(unicode(it.xpath('string(.)')))
     for it in btimes:
-        if '分钟' in it:
+        if '分钟' in it:      #如果发布时间为 40分钟前 
             num = re.findall('\d+', it)[0]
             yes_time = now_time + datetime.timedelta(minutes=-int(num))
             yes_time = yes_time.strftime('%Y-%m-%d %H:%M')
             times.append(yes_time)
         else:
-            if '今天' in it:
+            if '今天' in it:          #如果发布时间为 今天 10:56
                 rtime = starttime[0:4] + '-' + starttime[4:6] + '-' + starttime[-2:] + ' ' + it[3:8]
                 times.append(rtime)
-            else:
+            else:                   #发布时间为 07月20日 07:53
                 rtime = starttime[0:4] + '-' + starttime[4:6] + '-' + starttime[-2:] + ' ' + it[7:12]
                 times.append(rtime)
     return times
@@ -134,16 +133,18 @@ def get_comments(url, headers):
     time.sleep(6)
     request = urllib2.Request(finallyurl, headers=headers)
     html = urllib2.urlopen(request).read()
+
     try:
         totalpage = re.findall('<input name="mp" type="hidden" value="(.*?)" />', html)[0]
     except:
         totalpage = '1'
+
     print "    评论总页数：", totalpage
 
     for item in range(1, int(totalpage) + 1):
         if item != 1:
             finallyurl = url + str(item)
-            time.sleep(10)
+            time.sleep(6)
             request = urllib2.Request(finallyurl, headers=headers)
             html = urllib2.urlopen(request).read()
         print "    当前评论网页：", finallyurl
@@ -219,19 +220,24 @@ def download(keyword, starttime, endtime, cookievalue, cache):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
         'cookie': cookievalue}
 
-    preurl = "http://weibo.cn/search/mblog?hideSearchFrame=&keyword=" + keyword + '&advancedfilter=1&hasori=1&starttime=' + starttime + '&endtime=' + endtime + '&sort=time&page='
+    finallyurl = "http://weibo.cn/search/mblog?hideSearchFrame=&keyword=" + keyword + '&advancedfilter=1&hasori=1&starttime=' + starttime + '&endtime=' + endtime + '&sort=time&page=1'
     data = []
 
-    finallyurl = preurl + '1'
     print '当前关键词为：' + keyword
+
+
     time.sleep(6)
     request = urllib2.Request(finallyurl, headers=headers)
     html = urllib2.urlopen(request).read()
-    try:
-        totalpage = re.findall('<input name="mp" type="hidden" value="(.*?)" />', html)[0]
+
+
+    try:                                                                                    
+        totalpage = re.findall('<input name="mp" type="hidden" value="(.*?)" />', html)[0]   #判断搜索结果是否为多页
     except:
         totalpage = '1'
     print "内容总页数：", totalpage
+
+
     for webpagenum in range(1, int(totalpage)+1):
         try:
             print "当前微博日期为:" + starttime + "   开始爬取第" + str(webpagenum) + "个网页："
@@ -241,28 +247,37 @@ def download(keyword, starttime, endtime, cookievalue, cache):
                 request = urllib2.Request(finallyurl, headers=headers)
                 html = urllib2.urlopen(request).read()
             print finallyurl
-            datas = get_text(html=html, headers=headers)
-            buseridlist = get_idlist(html=html)
-            transponds, likes, comments_counts = get_transpond_like_comment(html=html)
-            times = get_time(html=html, starttime=starttime)
-            comments_urlist = get_comments_urllist(html=html)
-            locations = get_islocation(html=html, headers=headers)
+
+            #获取微博内容、转发量、赞数、评论数量、地点
+            datas = get_text(html=html, headers=headers)        #获取此页每条微博内容
+            buseridlist = get_idlist(html=html)     #获取此页发布微博的每个用户的id
+            transponds, likes, comments_counts = get_transpond_like_comment(html=html)  #获取每条微博的转发量、点赞数、评论数量
+            times = get_time(html=html, starttime=starttime)        #获取每条微博的发布时间
+            comments_urlist = get_comments_urllist(html=html)       #获取每条微博的评论链接
+            locations = get_islocation(html=html, headers=headers)  #获取每条微博的地点
+
+
             useridlist = []
-            for item in buseridlist:
+            for item in buseridlist:        #处理 特殊的用户id（如：VIP账号的ip）
                 if item[1] == '/':
                     useridlist.append(item[2:])
                 else:
                     useridlist.append(item)
+
             i = 0
+
             for text in datas:
                 print '第' + str(i+1) + '条微博：'
+
                 userid = useridlist[i]
                 transpond = transponds[i]
                 like = likes[i]
                 comments_count = comments_counts[i]
                 time1 = times[i]
                 location = locations[i]
+
                 userinfo = get_userinfo(userid=userid, headers=headers)
+
                 if comments_count != '0':
                     print "    开始爬取评论"
                     comments = get_comments(url=comments_urlist[datas.index(text)], headers=headers)
@@ -275,6 +290,7 @@ def download(keyword, starttime, endtime, cookievalue, cache):
                     cache.insert(post)
                 except:
                     print "导入数据库出错，请检查数据库是否开启"
+                    exit()
                 print "爬取完成"
                 i += 1
         except urllib2.HTTPError:
