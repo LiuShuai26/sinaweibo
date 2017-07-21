@@ -68,6 +68,8 @@ def LoginWeibo(username, password):
         cookie = cookie + item['name'] + '=' + item['value'] + ';'
 
     print u'登陆成功...'
+    driver.close()      #最后启动的Firefox，先关闭
+    display.stop()      #最先启动的虚拟桌面，最后关闭
     # return driver
     return cookie
 
